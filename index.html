@@ -590,7 +590,7 @@
 
     // Near the bottom — footer is visible. Kill nav entirely, no direction logic.
     // Threshold is generous so BEHIND → footer feels clean with no nav flash.
-    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.35;
+    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.5;
     if (nearBottom) {
       navbar.classList.remove('visible');
       navbar.classList.remove('scrolled-up');
