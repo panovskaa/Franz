@@ -205,6 +205,11 @@
   /* BEHIND */
   #behind { background: var(--cream); color: var(--dark); padding: 0; }
   .behind-header { text-align: center; padding: 7rem 2.5rem 5rem; position: relative; z-index: 1; }
+  .behind-header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    text-align: left;
+  }
   .section-eyebrow {
     font-family: 'Space Mono', monospace; font-size: 0.6rem;
     letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 1.2rem;
@@ -430,8 +435,10 @@
   <!-- BEHIND -->
   <section id="behind">
     <div class="behind-header">
-      <span class="section-eyebrow">Behind Franz</span>
-      <h2 class="section-title">What makes a place feel like home</h2>
+      <div class="behind-header-inner">
+        <span class="section-eyebrow">Behind Franz</span>
+        <h2 class="section-title">What makes a place feel like home</h2>
+      </div>
     </div>
 
     <div class="behind-stack" id="behindStack">
