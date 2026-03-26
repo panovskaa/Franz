@@ -151,6 +151,7 @@
     font-family: 'Space Mono', monospace; font-size: 0.65rem;
     letter-spacing: 0.18em; text-transform: uppercase; color: var(--cream);
     will-change: transform; transform: translateZ(0);
+    transform: translateZ(0);
   }
   .ticker-inner span { padding: 0 1.4rem; }
 
@@ -227,6 +228,7 @@
     height: clamp(420px, 72vh, 900px);
     display: grid; grid-template-columns: 1fr 1fr;
     border-radius: 4px; overflow: hidden; transform-origin: top center;
+    will-change: transform, opacity;
   }
   .behind-card:nth-child(1) .behind-panel { background: #1a1612; }
   .behind-card:nth-child(2) .behind-panel { background: var(--warm); }
@@ -568,14 +570,15 @@
   // FIX 3: iOS rubber-band elastic overscroll (scrollY < 0 or > maxScroll)
   // is still skipped entirely to avoid false direction changes.
   // ─────────────────────────────────────────────────────────────────────────
-  const footerSpacer   = document.getElementById('footer-spacer');
+
   let lastScrollY      = window.scrollY;
   let scrollUpOrigin   = null;
   const NAV_HEIGHT     = 20;
 
-  function getMaxScroll() {
-    return document.documentElement.scrollHeight - window.innerHeight;
-  }
+  let maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  window.addEventListener('resize', () => {
+    maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+  });
 
   function isInFooterZone() {
     // Footer zone = the spacer's top edge is on-screen or above.
@@ -587,7 +590,6 @@
 
   window.addEventListener('scroll', () => {
     const currentScrollY = window.scrollY;
-    const maxScroll      = getMaxScroll();
 
     // Skip iOS elastic overscroll
     if (currentScrollY < 0 || currentScrollY > maxScroll) {
@@ -596,7 +598,7 @@
     }
 
     const onHero      = currentScrollY < window.innerHeight * 0.9;
-    const inFooter    = isInFooterZone();
+    const inFooter = footerVisible;
     const scrollingUp = currentScrollY < lastScrollY;
 
     if (onHero) {
@@ -671,17 +673,20 @@
 
     window.addEventListener('resize', () => { isMobile = window.innerWidth <= 1024; });
 
+    let lastProgress = [-1, -1, -1];
+
     function applyParallax() {
-      rafPending = false;
       if (isMobile) return;
       const wh = window.innerHeight;
       cards.forEach((card, i) => {
-        const rect     = card.getBoundingClientRect();
-        const panel    = panels[i];
-        const img      = imgs[i];
+        const rect = card.getBoundingClientRect();
         const progress = Math.min(1, Math.max(0, -rect.top) / wh);
+        if (Math.abs(progress - lastProgress[i]) < 0.01) return; // skip tiny updates
+        lastProgress[i] = progress;
+        const panel = panels[i];
         panel.style.transform = `scale(${1 - progress * 0.08})`;
-        panel.style.opacity   = String(1 - progress * 0.3);
+        panel.style.opacity = String(1 - progress * 0.3);
+        const img = imgs[i];
         if (img) img.style.transform = `translateY(${-(progress * 30)}px)`;
       });
     }
@@ -696,6 +701,15 @@
 
     applyParallax();
   }
+
+  const footerSpacer = document.getElementById('footer-spacer');
+  let footerVisible = false;
+
+  const footerObserver = new IntersectionObserver((entries) => {
+    footerVisible = entries[0].isIntersecting;
+  }, { threshold: 0 });
+
+  if (footerSpacer) footerObserver.observe(footerSpacer);
 
 })();
 </script>
