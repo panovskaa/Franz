@@ -36,8 +36,6 @@
     background: var(--red);
     display: flex; align-items: flex-end; justify-content: center;
     padding-bottom: 4vh;
-    will-change: opacity;
-    isolation: isolate;
   }
   #intro.phase-out {
     opacity: 0;
@@ -66,7 +64,7 @@
     opacity: 0.90; display: block;
   }
 
-  /* NAV */
+  /* NAV — base (desktop) */
   nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
@@ -100,12 +98,16 @@
   }
   .nav-store:hover { background: var(--cream); color: var(--dark); }
 
+  /* NAV — mobile: hide text links, shrink logo + button */
   @media (max-width: 680px) {
-    nav { padding: 0.5rem 1rem; gap: 0.5rem; }
-    .nav-links { gap: 0.8rem; }
-    .nav-links a { font-size: 0.52rem; letter-spacing: 0.07em; }
-    .nav-logo-img { height: 2.6rem !important; }
-    .nav-store { font-size: 0.5rem; letter-spacing: 0.05em; padding: 0.3rem 0.5rem; }
+    nav { padding: 0.5rem 1.1rem; }
+    .nav-links { display: none; }
+    .nav-logo-img { height: 3rem !important; }
+    .nav-store {
+      font-size: 0.58rem;
+      letter-spacing: 0.06em;
+      padding: 0.36rem 0.65rem;
+    }
   }
 
   /* HERO */
@@ -156,7 +158,7 @@
 
   /* ABOUT */
   #about { background: var(--cream); color: var(--dark); padding: 7rem 2.5rem; }
-  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; }
   .about-label {
     font-family: 'Space Mono', monospace; font-size: 0.62rem;
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem;
@@ -168,21 +170,11 @@
   .about-img { aspect-ratio: 3/4; overflow: hidden; }
   .about-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  @media (max-width: 680px) {
-    #about { padding: 3rem 1rem; }
-    .about-grid { gap: 1.2rem; }
-    .about-text { font-size: 0.6rem; line-height: 1.7; margin-bottom: 0.9rem; }
-    .about-label { font-size: 0.5rem; margin-bottom: 0.8rem; }
-  }
-
   /* PHOTOS */
   #restaurant { padding: 0; }
   .restaurant-grid {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 1.2rem; padding: 1.2rem; background: var(--cream);
-  }
-  @media (max-width: 680px) {
-    .restaurant-grid { gap: 0.35rem; padding: 0.35rem; }
   }
   .r-photo { aspect-ratio: 4/5; overflow: hidden; }
   .r-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -312,13 +304,16 @@
     .bp-img img { position: static; height: 100%; width: 100%; }
     .bp-text { padding: 2.5rem; }
     .bp-bignum { font-size: 8rem; }
+    .about-grid { grid-template-columns: 1fr; gap: 3rem; }
     .footer-info-grid { gap: 3rem; }
   }
 
   /* SMALL MOBILE */
   @media (max-width: 480px) {
+    #about { padding: 4rem 1.4rem; }
     .info-strip { padding: 2.5rem 1.4rem 3rem; }
     .info-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .restaurant-grid { grid-template-columns: 1fr; gap: 0.8rem; padding: 0.8rem; }
     .footer-info-grid { grid-template-columns: 1fr; gap: 2rem; }
     .footer-col a, .footer-col p { font-size: 0.85rem; line-height: 2; }
   }
@@ -390,9 +385,10 @@
       <div class="about-grid">
         <div>
           <p class="about-label">About</p>
-          <p class="about-text">Franz opened on March 20th, 2026 — the result of over half a year of doubt, rebuilding, and starting over. A space that lived in someone's head for a long time before it became real. </p>
+          <p class="about-text">Franz opened on March 20th, 2026 — the result of over half a year of doubt, rebuilding, and starting over. A space that lived in someone's head for a long time before it became real.</p>
           <p class="about-text">Built for listening, lingering, and good company. Everything that makes us happy, all under one roof. Music, drinks, plates, people — no rush, no noise, just the right kind of atmosphere.</p>
           <p class="about-text">This is a personal place. It exists because of the people who believed in it before it had walls. We don't take that lightly.</p>
+          <p class="about-text">"Built for listening, lingering, and good company. Everything that makes me happy, all under one roof."</p>
         </div>
         <div class="about-img">
           <img src="assets/images/about.jpeg" alt="Franz">
@@ -546,7 +542,7 @@
       heroWordmark.classList.add('visible');
       intro.classList.add('phase-out');
       navbar.classList.add('visible');
-      setTimeout(() => { intro.style.visibility = 'hidden'; }, 1300);
+      setTimeout(() => { intro.style.display = 'none'; }, 850);
     }, 900);
   }
 
@@ -554,63 +550,20 @@
   if (window.scrollY < 50) {
     setTimeout(spreadLetters, delay);
   } else {
-    intro.style.visibility = 'hidden';
+    intro.style.display = 'none';
     heroWordmark.classList.add('visible');
     navbar.classList.add('visible');
   }
 
-  // ── NAV SCROLL LOGIC ──────────────────────────────────────────────────────
-  // iOS rubber-band bounce fires scroll events where scrollY briefly goes
-  // *below 0* (top bounce) or *above maxScroll* (bottom bounce). Both look like
-  // direction changes but aren't real user intent.
-  //
-  // The fix is surgical: if scrollY is out of the valid 0…maxScroll range,
-  // skip the event entirely. This only fires during the brief overscroll moment
-  // and has zero effect on normal scrolling anywhere on the page.
-  // ─────────────────────────────────────────────────────────────────────────
-  let lastScrollY      = window.scrollY;
-  let navHideTimer     = null;
-  // Only react after meaningful movement — swallows iOS bounce micro-events
-  let committedScrollY = window.scrollY;
-  const HYSTERESIS     = 12; // px required before direction is committed
-
-  function getMaxScroll() {
-    return document.documentElement.scrollHeight - window.innerHeight;
-  }
+  let lastScrollY = window.scrollY;
+  let navHideTimer = null;
 
   window.addEventListener('scroll', () => {
     const currentScrollY = window.scrollY;
-    const maxScroll      = getMaxScroll();
-
-    // Skip out-of-bounds values caused by iOS elastic overscroll
-    if (currentScrollY < 0 || currentScrollY > maxScroll) {
-      lastScrollY = currentScrollY;
-      return;
-    }
-
-    // Near the bottom — footer is visible. Kill nav entirely, no direction logic.
-    // Threshold is generous so BEHIND → footer feels clean with no nav flash.
-    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.35;
-    if (nearBottom) {
-      navbar.classList.remove('visible');
-      navbar.classList.remove('scrolled-up');
-      lastScrollY      = currentScrollY;
-      committedScrollY = currentScrollY;
-      return;
-    }
-
-    // Hysteresis gate — ignore sub-threshold movement
-    const delta = currentScrollY - committedScrollY;
-    if (Math.abs(delta) < HYSTERESIS) {
-      lastScrollY = currentScrollY;
-      return;
-    }
-    committedScrollY = currentScrollY;
-
     const scrollingUp = currentScrollY < lastScrollY;
-    const onHero      = currentScrollY < window.innerHeight * 0.9;
+    const onHero = currentScrollY < window.innerHeight * 0.9;
 
-    navbar.classList.toggle('visible',     onHero || scrollingUp);
+    navbar.classList.toggle('visible', onHero || scrollingUp);
     navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
 
     if (!onHero && scrollingUp) {
