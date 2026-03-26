@@ -98,15 +98,19 @@
   }
   .nav-store:hover { background: var(--cream); color: var(--dark); }
 
-  /* NAV — mobile: hide text links, shrink logo + button */
+  /* FIX 1: NAV — mobile: show links, just smaller. Don't hide them. */
   @media (max-width: 680px) {
-    nav { padding: 0.5rem 1.1rem; }
-    .nav-links { display: none; }
-    .nav-logo-img { height: 3rem !important; }
+    nav { padding: 0.5rem 1rem; gap: 0.5rem; }
+    .nav-links { gap: 0.8rem; }
+    .nav-links a {
+      font-size: 0.52rem;
+      letter-spacing: 0.07em;
+    }
+    .nav-logo-img { height: 2.6rem !important; }
     .nav-store {
-      font-size: 0.58rem;
-      letter-spacing: 0.06em;
-      padding: 0.36rem 0.65rem;
+      font-size: 0.5rem;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.5rem;
     }
   }
 
@@ -158,7 +162,14 @@
 
   /* ABOUT */
   #about { background: var(--cream); color: var(--dark); padding: 7rem 2.5rem; }
-  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5rem; align-items: start; }
+
+  /* FIX 2: Always 2-column grid for about — text + photo side by side on all screens */
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+  }
   .about-label {
     font-family: 'Space Mono', monospace; font-size: 0.62rem;
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem;
@@ -170,11 +181,30 @@
   .about-img { aspect-ratio: 3/4; overflow: hidden; }
   .about-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+  /* Smaller text on mobile so it doesn't overflow */
+  @media (max-width: 680px) {
+    #about { padding: 3rem 1rem; }
+    .about-grid { gap: 1.2rem; }
+    .about-text { font-size: 0.6rem; line-height: 1.7; margin-bottom: 0.9rem; }
+    .about-label { font-size: 0.5rem; margin-bottom: 0.8rem; }
+  }
+
   /* PHOTOS */
   #restaurant { padding: 0; }
+
+  /* FIX 3: Always 3 columns for photos, reduce padding/gap on mobile */
   .restaurant-grid {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 1.2rem; padding: 1.2rem; background: var(--cream);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.2rem;
+    padding: 1.2rem;
+    background: var(--cream);
+  }
+  @media (max-width: 680px) {
+    .restaurant-grid {
+      gap: 0.35rem;
+      padding: 0.35rem;
+    }
   }
   .r-photo { aspect-ratio: 4/5; overflow: hidden; }
   .r-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -304,16 +334,13 @@
     .bp-img img { position: static; height: 100%; width: 100%; }
     .bp-text { padding: 2.5rem; }
     .bp-bignum { font-size: 8rem; }
-    .about-grid { grid-template-columns: 1fr; gap: 3rem; }
     .footer-info-grid { gap: 3rem; }
   }
 
   /* SMALL MOBILE */
   @media (max-width: 480px) {
-    #about { padding: 4rem 1.4rem; }
     .info-strip { padding: 2.5rem 1.4rem 3rem; }
     .info-grid { grid-template-columns: 1fr; gap: 2.5rem; }
-    .restaurant-grid { grid-template-columns: 1fr; gap: 0.8rem; padding: 0.8rem; }
     .footer-info-grid { grid-template-columns: 1fr; gap: 2rem; }
     .footer-col a, .footer-col p { font-size: 0.85rem; line-height: 2; }
   }
@@ -555,23 +582,43 @@
     navbar.classList.add('visible');
   }
 
+  // FIX 4: Nav scroll logic — ignore rubber-bounce near the bottom of the page.
+  // We track the maximum scroll position reached, and suppress upward scroll
+  // triggers if we're within a small window of the document's total scrollable height.
   let lastScrollY = window.scrollY;
+  let maxScrollY  = window.scrollY;
   let navHideTimer = null;
+
+  function getMaxScroll() {
+    return document.documentElement.scrollHeight - window.innerHeight;
+  }
 
   window.addEventListener('scroll', () => {
     const currentScrollY = window.scrollY;
+    const maxScroll = getMaxScroll();
+
+    // Update the furthest point we've actually scrolled to
+    if (currentScrollY > maxScrollY) maxScrollY = currentScrollY;
+
     const scrollingUp = currentScrollY < lastScrollY;
     const onHero = currentScrollY < window.innerHeight * 0.9;
 
-    navbar.classList.toggle('visible', onHero || scrollingUp);
-    navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
+    // FIX 4: If we're near the bottom (within 80px of max scroll), treat any
+    // upward movement as rubber-bounce and suppress the nav appearing.
+    const nearBottom = maxScrollY >= maxScroll - 80;
+    const isRubberBounce = nearBottom && scrollingUp && currentScrollY >= maxScroll - 120;
 
-    if (!onHero && scrollingUp) {
-      clearTimeout(navHideTimer);
-      navHideTimer = setTimeout(() => {
-        navbar.classList.remove('visible');
-        navbar.classList.remove('scrolled-up');
-      }, 1000);
+    if (!isRubberBounce) {
+      navbar.classList.toggle('visible', onHero || scrollingUp);
+      navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
+
+      if (!onHero && scrollingUp) {
+        clearTimeout(navHideTimer);
+        navHideTimer = setTimeout(() => {
+          navbar.classList.remove('visible');
+          navbar.classList.remove('scrolled-up');
+        }, 1000);
+      }
     }
 
     lastScrollY = currentScrollY;
