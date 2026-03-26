@@ -66,7 +66,7 @@
     opacity: 0.90; display: block;
   }
 
-  /* NAV — base (desktop) */
+  /* NAV */
   nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
@@ -100,20 +100,12 @@
   }
   .nav-store:hover { background: var(--cream); color: var(--dark); }
 
-  /* FIX 1: NAV — mobile: show links, just smaller. Don't hide them. */
   @media (max-width: 680px) {
     nav { padding: 0.5rem 1rem; gap: 0.5rem; }
     .nav-links { gap: 0.8rem; }
-    .nav-links a {
-      font-size: 0.52rem;
-      letter-spacing: 0.07em;
-    }
+    .nav-links a { font-size: 0.52rem; letter-spacing: 0.07em; }
     .nav-logo-img { height: 2.6rem !important; }
-    .nav-store {
-      font-size: 0.5rem;
-      letter-spacing: 0.05em;
-      padding: 0.3rem 0.5rem;
-    }
+    .nav-store { font-size: 0.5rem; letter-spacing: 0.05em; padding: 0.3rem 0.5rem; }
   }
 
   /* HERO */
@@ -164,14 +156,7 @@
 
   /* ABOUT */
   #about { background: var(--cream); color: var(--dark); padding: 7rem 2.5rem; }
-
-  /* FIX 2: Always 2-column grid for about — text + photo side by side on all screens */
-  .about-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    align-items: start;
-  }
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
   .about-label {
     font-family: 'Space Mono', monospace; font-size: 0.62rem;
     letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 2rem;
@@ -183,7 +168,6 @@
   .about-img { aspect-ratio: 3/4; overflow: hidden; }
   .about-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  /* Smaller text on mobile so it doesn't overflow */
   @media (max-width: 680px) {
     #about { padding: 3rem 1rem; }
     .about-grid { gap: 1.2rem; }
@@ -193,20 +177,12 @@
 
   /* PHOTOS */
   #restaurant { padding: 0; }
-
-  /* FIX 3: Always 3 columns for photos, reduce padding/gap on mobile */
   .restaurant-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 1.2rem;
-    padding: 1.2rem;
-    background: var(--cream);
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.2rem; padding: 1.2rem; background: var(--cream);
   }
   @media (max-width: 680px) {
-    .restaurant-grid {
-      gap: 0.35rem;
-      padding: 0.35rem;
-    }
+    .restaurant-grid { gap: 0.35rem; padding: 0.35rem; }
   }
   .r-photo { aspect-ratio: 4/5; overflow: hidden; }
   .r-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -583,11 +559,16 @@
     navbar.classList.add('visible');
   }
 
-  // FIX 4: Nav scroll logic — ignore rubber-bounce near the bottom of the page.
-  // We track the maximum scroll position reached, and suppress upward scroll
-  // triggers if we're within a small window of the document's total scrollable height.
-  let lastScrollY = window.scrollY;
-  let maxScrollY  = window.scrollY;
+  // ── NAV SCROLL LOGIC ──────────────────────────────────────────────────────
+  // iOS rubber-band bounce fires scroll events where scrollY briefly goes
+  // *below 0* (top bounce) or *above maxScroll* (bottom bounce). Both look like
+  // direction changes but aren't real user intent.
+  //
+  // The fix is surgical: if scrollY is out of the valid 0…maxScroll range,
+  // skip the event entirely. This only fires during the brief overscroll moment
+  // and has zero effect on normal scrolling anywhere on the page.
+  // ─────────────────────────────────────────────────────────────────────────
+  let lastScrollY  = window.scrollY;
   let navHideTimer = null;
 
   function getMaxScroll() {
@@ -596,30 +577,26 @@
 
   window.addEventListener('scroll', () => {
     const currentScrollY = window.scrollY;
-    const maxScroll = getMaxScroll();
+    const maxScroll      = getMaxScroll();
 
-    // Update the furthest point we've actually scrolled to
-    if (currentScrollY > maxScrollY) maxScrollY = currentScrollY;
+    // Skip out-of-bounds values caused by iOS elastic overscroll
+    if (currentScrollY < 0 || currentScrollY > maxScroll) {
+      lastScrollY = currentScrollY;
+      return;
+    }
 
     const scrollingUp = currentScrollY < lastScrollY;
-    const onHero = currentScrollY < window.innerHeight * 0.9;
+    const onHero      = currentScrollY < window.innerHeight * 0.9;
 
-    // FIX 4: If we're near the bottom (within 80px of max scroll), treat any
-    // upward movement as rubber-bounce and suppress the nav appearing.
-    const nearBottom = maxScrollY >= maxScroll - 80;
-    const isRubberBounce = nearBottom && scrollingUp && currentScrollY >= maxScroll - 120;
+    navbar.classList.toggle('visible',     onHero || scrollingUp);
+    navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
 
-    if (!isRubberBounce) {
-      navbar.classList.toggle('visible', onHero || scrollingUp);
-      navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
-
-      if (!onHero && scrollingUp) {
-        clearTimeout(navHideTimer);
-        navHideTimer = setTimeout(() => {
-          navbar.classList.remove('visible');
-          navbar.classList.remove('scrolled-up');
-        }, 1000);
-      }
+    if (!onHero && scrollingUp) {
+      clearTimeout(navHideTimer);
+      navHideTimer = setTimeout(() => {
+        navbar.classList.remove('visible');
+        navbar.classList.remove('scrolled-up');
+      }, 1000);
     }
 
     lastScrollY = currentScrollY;
