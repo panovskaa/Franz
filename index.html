@@ -569,10 +569,8 @@
   // and has zero effect on normal scrolling anywhere on the page.
   // ─────────────────────────────────────────────────────────────────────────
   let lastScrollY      = window.scrollY;
-  let navHideTimer     = null;
-  // Only react after meaningful movement — swallows iOS bounce micro-events
-  let committedScrollY = window.scrollY;
-  const HYSTERESIS     = 12; // px required before direction is committed
+  let scrollUpOrigin   = null; // where upward scroll began
+  const NAV_HEIGHT     = navbar.offsetHeight;
 
   function getMaxScroll() {
     return document.documentElement.scrollHeight - window.innerHeight;
@@ -582,47 +580,49 @@
     const currentScrollY = window.scrollY;
     const maxScroll      = getMaxScroll();
 
-    // Skip out-of-bounds values caused by iOS elastic overscroll
+    // Skip iOS elastic overscroll
     if (currentScrollY < 0 || currentScrollY > maxScroll) {
-      lastScrollY = currentScrollY;
+      lastScrollY    = currentScrollY;
+      scrollUpOrigin = null;
       return;
     }
 
-    // Near the bottom — footer is visible. Kill nav entirely, no direction logic.
-    // Threshold is generous so BEHIND → footer feels clean with no nav flash.
-    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.5;
+    // Footer zone — nav stays hidden, reset everything
+    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.6;
     if (nearBottom) {
       navbar.classList.remove('visible');
       navbar.classList.remove('scrolled-up');
-      lastScrollY      = currentScrollY;
-      committedScrollY = currentScrollY;
+      lastScrollY    = currentScrollY;
+      scrollUpOrigin = null;
       return;
     }
 
-    // Hysteresis gate — ignore sub-threshold movement
-    const delta = currentScrollY - committedScrollY;
-    if (Math.abs(delta) < HYSTERESIS) {
-      lastScrollY = currentScrollY;
-      return;
-    }
-    committedScrollY = currentScrollY;
-
+    const onHero     = currentScrollY < window.innerHeight * 0.9;
     const scrollingUp = currentScrollY < lastScrollY;
-    const onHero      = currentScrollY < window.innerHeight * 0.9;
 
-    navbar.classList.toggle('visible',     onHero || scrollingUp);
-    navbar.classList.toggle('scrolled-up', !onHero && scrollingUp);
+    if (onHero) {
+      // Always visible on hero
+      navbar.classList.add('visible');
+      navbar.classList.remove('scrolled-up');
+      scrollUpOrigin = null;
+    } else if (scrollingUp) {
+      // Start tracking upward scroll distance
+      if (scrollUpOrigin === null) scrollUpOrigin = lastScrollY;
+      const scrolledUpPx = scrollUpOrigin - currentScrollY;
 
-    if (!onHero && scrollingUp) {
-      clearTimeout(navHideTimer);
-      navHideTimer = setTimeout(() => {
-        navbar.classList.remove('visible');
-        navbar.classList.remove('scrolled-up');
-      }, 1000);
+      if (scrolledUpPx >= NAV_HEIGHT) {
+        navbar.classList.add('visible');
+        navbar.classList.add('scrolled-up');
+      }
+    } else {
+      // Scrolling down — hide immediately, reset origin
+      navbar.classList.remove('visible');
+      navbar.classList.remove('scrolled-up');
+      scrollUpOrigin = null;
     }
 
     lastScrollY = currentScrollY;
-  });
+  }, { passive: true });
 
   // Ticker
   const inner = document.getElementById('tickerInner');
