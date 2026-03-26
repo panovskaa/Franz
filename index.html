@@ -568,61 +568,6 @@
   // skip the event entirely. This only fires during the brief overscroll moment
   // and has zero effect on normal scrolling anywhere on the page.
   // ─────────────────────────────────────────────────────────────────────────
-  let lastScrollY      = window.scrollY;
-  let scrollUpOrigin   = null; // where upward scroll began
-  const NAV_HEIGHT     = 20;
-
-  function getMaxScroll() {
-    return document.documentElement.scrollHeight - window.innerHeight;
-  }
-
-  window.addEventListener('scroll', () => {
-    const currentScrollY = window.scrollY;
-    const maxScroll      = getMaxScroll();
-
-    // Skip iOS elastic overscroll
-    if (currentScrollY < 0 || currentScrollY > maxScroll) {
-      lastScrollY    = currentScrollY;
-      scrollUpOrigin = null;
-      return;
-    }
-
-    // Footer zone — nav stays hidden, reset everything
-    const nearBottom = currentScrollY > maxScroll - window.innerHeight * 0.6;
-    if (nearBottom) {
-      navbar.classList.remove('visible');
-      navbar.classList.remove('scrolled-up');
-      lastScrollY    = currentScrollY;
-      scrollUpOrigin = null;
-      return;
-    }
-
-    const onHero     = currentScrollY < window.innerHeight * 0.9;
-    const scrollingUp = currentScrollY < lastScrollY;
-
-    if (onHero) {
-      // Always visible on hero
-      navbar.classList.add('visible');
-      navbar.classList.remove('scrolled-up');
-      scrollUpOrigin = null;
-    } else if (scrollingUp) {
-      // Start tracking upward scroll distance
-      if (scrollUpOrigin === null) scrollUpOrigin = lastScrollY;
-      const scrolledUpPx = scrollUpOrigin - currentScrollY;
-
-      if (scrolledUpPx >= NAV_HEIGHT) {
-        navbar.classList.add('visible');
-        navbar.classList.add('scrolled-up');
-      }
-    } else {
-      // Scrolling down — hide immediately, reset origin
-      navbar.classList.remove('visible');
-      navbar.classList.remove('scrolled-up');
-      scrollUpOrigin = null;
-    }
-
-    lastScrollY = currentScrollY;
-  }, { passive: true });
 
   // Ticker
   const inner = document.getElementById('tickerInner');
