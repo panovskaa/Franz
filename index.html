@@ -36,6 +36,8 @@
     background: var(--red);
     display: flex; align-items: flex-end; justify-content: center;
     padding-bottom: 4vh;
+    will-change: opacity;
+    isolation: isolate;
   }
   #intro.phase-out {
     opacity: 0;
@@ -415,7 +417,6 @@
           <p class="about-text">Franz opened on March 20th, 2026 — the result of over half a year of doubt, rebuilding, and starting over. A space that lived in someone's head for a long time before it became real.</p>
           <p class="about-text">Built for listening, lingering, and good company. Everything that makes us happy, all under one roof. Music, drinks, plates, people — no rush, no noise, just the right kind of atmosphere.</p>
           <p class="about-text">This is a personal place. It exists because of the people who believed in it before it had walls. We don't take that lightly.</p>
-          <p class="about-text">"Built for listening, lingering, and good company. Everything that makes me happy, all under one roof."</p>
         </div>
         <div class="about-img">
           <img src="assets/images/about.jpeg" alt="Franz">
@@ -569,7 +570,7 @@
       heroWordmark.classList.add('visible');
       intro.classList.add('phase-out');
       navbar.classList.add('visible');
-      setTimeout(() => { intro.style.display = 'none'; }, 850);
+      setTimeout(() => { intro.style.visibility = 'hidden'; }, 1300);
     }, 900);
   }
 
@@ -577,7 +578,7 @@
   if (window.scrollY < 50) {
     setTimeout(spreadLetters, delay);
   } else {
-    intro.style.display = 'none';
+    intro.style.visibility = 'hidden';
     heroWordmark.classList.add('visible');
     navbar.classList.add('visible');
   }
