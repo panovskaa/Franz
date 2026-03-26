@@ -446,11 +446,6 @@
           </div>
           <div class="bp-img"><img src="assets/images/behind1.jpg" alt="Sound" id="bpImg1"></div>
         </div>
-        <div class="behind-progress">
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
-        </div>
       </div>
 
       <div class="behind-card">
@@ -463,11 +458,6 @@
           </div>
           <div class="bp-img"><img src="assets/images/behind2.jpeg" alt="Drinks" id="bpImg2"></div>
         </div>
-        <div class="behind-progress">
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
-        </div>
       </div>
 
       <div class="behind-card">
@@ -479,11 +469,6 @@
             <span class="bp-bignum">3</span>
           </div>
           <div class="bp-img"><img src="assets/images/behind3.jpg" alt="People" id="bpImg3"></div>
-        </div>
-        <div class="behind-progress">
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
-          <div class="bp-dot"></div>
         </div>
       </div>
 
@@ -560,14 +545,80 @@
   }
 
   // ── NAV SCROLL LOGIC ──────────────────────────────────────────────────────
-  // iOS rubber-band bounce fires scroll events where scrollY briefly goes
-  // *below 0* (top bounce) or *above maxScroll* (bottom bounce). Both look like
-  // direction changes but aren't real user intent.
   //
-  // The fix is surgical: if scrollY is out of the valid 0…maxScroll range,
-  // skip the event entirely. This only fires during the brief overscroll moment
-  // and has zero effect on normal scrolling anywhere on the page.
+  // FIX 1: Footer zone detection now uses the footer-spacer element's top
+  // edge instead of a fragile maxScroll percentage. This means nav hides
+  // exactly when the spacer (= footer reveal point) enters the viewport,
+  // not earlier. Previously the 0.6 multiplier hid the nav while the last
+  // Behind card was still fully visible, causing a jarring pop.
+  //
+  // FIX 2: scrollUpOrigin is NO LONGER reset inside the footer zone. It
+  // is only reset when the user begins scrolling downward. This means after
+  // scrolling back up out of the footer, the nav reappears after a genuine
+  // NAV_HEIGHT worth of upward movement instead of requiring a full extra
+  // swipe to rebuild the origin.
+  //
+  // FIX 3: iOS rubber-band elastic overscroll (scrollY < 0 or > maxScroll)
+  // is still skipped entirely to avoid false direction changes.
   // ─────────────────────────────────────────────────────────────────────────
+  const footerSpacer   = document.getElementById('footer-spacer');
+  let lastScrollY      = window.scrollY;
+  let scrollUpOrigin   = null;
+  const NAV_HEIGHT     = 20;
+
+  function getMaxScroll() {
+    return document.documentElement.scrollHeight - window.innerHeight;
+  }
+
+  function isInFooterZone() {
+    // Footer zone = the spacer's top edge is on-screen or above.
+    // We only read getBoundingClientRect once per scroll event here;
+    // it's a single cheap read with no paired write so no layout thrash.
+    const rect = footerSpacer.getBoundingClientRect();
+    return rect.top <= window.innerHeight;
+  }
+
+  window.addEventListener('scroll', () => {
+    const currentScrollY = window.scrollY;
+    const maxScroll      = getMaxScroll();
+
+    // Skip iOS elastic overscroll
+    if (currentScrollY < 0 || currentScrollY > maxScroll) {
+      lastScrollY = currentScrollY;
+      return;
+    }
+
+    const onHero      = currentScrollY < window.innerHeight * 0.9;
+    const inFooter    = isInFooterZone();
+    const scrollingUp = currentScrollY < lastScrollY;
+
+    if (onHero) {
+      navbar.classList.add('visible');
+      navbar.classList.remove('scrolled-up');
+      scrollUpOrigin = null;
+    } else if (inFooter) {
+      // Hide nav while footer is revealed — but do NOT touch scrollUpOrigin.
+      // When the user scrolls back up out of the footer, the existing origin
+      // (set just before entering the footer) will still be valid and the
+      // NAV_HEIGHT threshold will trigger correctly after a short upward swipe.
+      navbar.classList.remove('visible');
+      navbar.classList.remove('scrolled-up');
+    } else if (scrollingUp) {
+      if (scrollUpOrigin === null) scrollUpOrigin = lastScrollY;
+      const scrolledUpPx = scrollUpOrigin - currentScrollY;
+      if (scrolledUpPx >= NAV_HEIGHT) {
+        navbar.classList.add('visible');
+        navbar.classList.add('scrolled-up');
+      }
+    } else {
+      // Scrolling down — hide and reset origin
+      navbar.classList.remove('visible');
+      navbar.classList.remove('scrolled-up');
+      scrollUpOrigin = null;
+    }
+
+    lastScrollY = currentScrollY;
+  }, { passive: true });
 
   // Ticker
   const inner = document.getElementById('tickerInner');
@@ -582,7 +633,21 @@
     requestAnimationFrame(tick);
   })();
 
-  // Behind — stacking scroll
+  // ── BEHIND STACK PARALLAX ─────────────────────────────────────────────────
+  //
+  // FIX 4: The scroll handler previously called getBoundingClientRect() and
+  // then immediately wrote style.transform for every card on every scroll
+  // event. Reading layout (getBoundingClientRect) and writing layout
+  // (style.transform) in the same synchronous block forces the browser to
+  // recalculate styles between reads — this is "layout thrash" and is the
+  // primary cause of the choppy feel in the Behind section.
+  //
+  // The fix: gate all DOM writes behind requestAnimationFrame. The scroll
+  // handler only records the raw scrollY value (a plain number read — no
+  // layout involved). rAF then does all the reads + writes in one batch
+  // during the browser's next paint frame, which is exactly what the
+  // compositor expects and eliminates the mid-frame recalculations.
+  // ─────────────────────────────────────────────────────────────────────────
   const cards  = document.querySelectorAll('.behind-card');
   const panels = document.querySelectorAll('.behind-panel');
   const imgs   = [
@@ -593,10 +658,14 @@
   const stack = document.getElementById('behindStack');
 
   if (stack && cards.length) {
-    let isMobile = window.innerWidth <= 1024;
+    let isMobile     = window.innerWidth <= 1024;
+    let rafPending   = false;
+    let latestScrollY = window.scrollY;
+
     window.addEventListener('resize', () => { isMobile = window.innerWidth <= 1024; });
 
-    function onScroll() {
+    function applyParallax() {
+      rafPending = false;
       if (isMobile) return;
       const wh = window.innerHeight;
       cards.forEach((card, i) => {
@@ -605,13 +674,20 @@
         const img      = imgs[i];
         const progress = Math.min(1, Math.max(0, -rect.top) / wh);
         panel.style.transform = `scale(${1 - progress * 0.08})`;
-        panel.style.opacity   = 1 - progress * 0.3;
+        panel.style.opacity   = String(1 - progress * 0.3);
         if (img) img.style.transform = `translateY(${-(progress * 30)}px)`;
       });
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    window.addEventListener('scroll', () => {
+      latestScrollY = window.scrollY;
+      if (!rafPending) {
+        rafPending = true;
+        requestAnimationFrame(applyParallax);
+      }
+    }, { passive: true });
+
+    applyParallax();
   }
 
 })();
